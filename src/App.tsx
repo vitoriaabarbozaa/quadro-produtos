@@ -196,7 +196,8 @@ function ProductModal({
 
         {/* Body */}
         <div className="overflow-y-auto flex-1 px-6 py-5 space-y-5">
-          {/* Talents */}
+          {/* Talents (some eventos não têm equipe) */}
+          {product.team.length > 0 && (
           <div>
             <div className="flex items-center gap-2 mb-3">
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest">
@@ -215,6 +216,7 @@ function ProductModal({
               ))}
             </div>
           </div>
+          )}
 
           {product.notes && (
             <div>
@@ -895,7 +897,8 @@ function ProductFormModal({
     const missing: string[] = [];
     if (!form.name.trim())   missing.push("Nome");
     if (!form.studio.trim()) missing.push("Estúdio / Local");
-    if (form.team.length === 0) missing.push("Equipe (marque ao menos uma pessoa)");
+    // Em Evento a equipe (apresentador) é opcional
+    if (form.kind !== "EVENTO" && form.team.length === 0) missing.push("Equipe (marque ao menos uma pessoa)");
     if (missing.length > 0) {
       setFormError(`Preencha os campos obrigatórios: ${missing.join(", ")}.`);
       return;
@@ -1020,7 +1023,7 @@ function ProductFormModal({
           {/* Equipe */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest">Equipe<span className="text-red-500"> *</span></p>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest">Equipe{form.kind !== "EVENTO" && <span className="text-red-500"> *</span>}</p>
               <span className="mono text-[11px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 rounded-full px-2 py-0.5">
                 {form.team.length} selecionado{form.team.length !== 1 ? "s" : ""}
               </span>
