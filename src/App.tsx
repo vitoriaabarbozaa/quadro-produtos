@@ -11,7 +11,7 @@ import {
 } from "./roster";
 import {
   subscribeToSchedule, addProduct, updateProduct, deleteProduct,
-  recordEditLog, subscribeToEditLog, type EditLogEntry,
+  recordEditLog, subscribeToEditLog, deleteEditLogEntry, clearEditLog, type EditLogEntry,
 } from "./storage";
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -569,14 +569,22 @@ function LoginModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: (s
   const [name, setName]         = useState("");
   const [password, setPassword] = useState("");
   const [error, setError]       = useState("");
+  const [busy, setBusy]         = useState(false);
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const session = login(name, password);
-    if (session) {
-      onSuccess(session);
-    } else {
-      setError("Senha incorreta.");
+    setBusy(true);
+    try {
+      const session = await login(name, password);
+      if (session) {
+        onSuccess(session);
+      } else {
+        setError("Senha incorreta.");
+      }
+    } catch {
+      setError("Não foi possível entrar. Abra o site por um endereço seguro (https).");
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -628,9 +636,10 @@ function LoginModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: (s
             </button>
             <button
               type="submit"
-              className="flex-1 px-3 py-2 rounded-lg text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors"
+              disabled={busy}
+              className="flex-1 px-3 py-2 rounded-lg text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 transition-colors"
             >
-              Entrar
+              {busy ? "Entrando…" : "Entrar"}
             </button>
           </div>
         </div>
@@ -640,7 +649,36 @@ function LoginModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: (s
 }
 
 // ── Histórico de edições ──────────────────────────────────────────────────────
-function EditLogModal({ entries, onClose, error }: { entries: EditLogEntry[]; onClose: () => void; error?: string | null }) {
+function EditLogModal({ entries, onClose, error, canDelete }: { entries: EditLogEntry[]; onClose: () => void; error?: string | null; canDelete?: boolean }) {
+  const [busy, setBusy]               = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+
+  async function runDelete(task: () => Promise<unknown>) {
+    setBusy(true);
+    setDeleteError("");
+    try {
+      await task(); // a lista se atualiza sozinha (tempo real)
+    } catch (err) {
+      console.error("Erro ao apagar histórico:", err);
+      const code = (err as { code?: string })?.code;
+      setDeleteError(code === "permission-denied"
+        ? "O Firebase bloqueou a exclusão. Nas regras do Firestore, permita \"delete\" na coleção editLogs."
+        : "Não foi possível apagar. Tente de novo.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function handleClearAll() {
+    if (!window.confirm("Apagar TODO o histórico de alterações? Isso não pode ser desfeito.")) return;
+    void runDelete(() => clearEditLog());
+  }
+
+  function handleDeleteOne(id: string) {
+    if (!window.confirm("Apagar este registro do histórico?")) return;
+    void runDelete(() => deleteEditLogEntry(id));
+  }
+
   const actionLabel: Record<EditLogEntry["action"], string> = {
     created: "Criou", updated: "Editou", deleted: "Excluiu",
   };
@@ -659,9 +697,25 @@ function EditLogModal({ entries, onClose, error }: { entries: EditLogEntry[]; on
             <h2 className="text-lg font-bold text-gray-900">Histórico de edições</h2>
             <p className="text-xs text-gray-400 mt-0.5">Últimas 100 alterações registradas</p>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-700 rounded-lg px-2 py-1">Fechar</button>
+          <div className="flex items-center gap-2">
+            {canDelete && entries.length > 0 && (
+              <button
+                onClick={handleClearAll}
+                disabled={busy}
+                className="text-xs font-semibold text-red-600 hover:text-red-700 border border-red-200 hover:bg-red-50 rounded-lg px-2.5 py-1.5 disabled:opacity-50 transition-colors"
+              >
+                {busy ? "Apagando…" : "Limpar histórico"}
+              </button>
+            )}
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-700 rounded-lg px-2 py-1">Fechar</button>
+          </div>
         </div>
         <div className="overflow-y-auto p-4 space-y-2">
+          {deleteError && (
+            <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+              {deleteError}
+            </div>
+          )}
           {error && (
             <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
               {error}
@@ -674,6 +728,15 @@ function EditLogModal({ entries, onClose, error }: { entries: EditLogEntry[]; on
               <div className="flex flex-wrap items-center gap-2">
                 <span className={`text-[11px] font-semibold border rounded-full px-2 py-0.5 ${actionColor[entry.action]}`}>{actionLabel[entry.action]}</span>
                 <span className="text-sm font-semibold text-gray-800">{entry.productName}</span>
+                {canDelete && entry.id && (
+                  <button
+                    onClick={() => handleDeleteOne(entry.id!)}
+                    disabled={busy}
+                    className="ml-auto text-[11px] font-medium text-red-600 hover:text-red-700 disabled:opacity-50"
+                  >
+                    Apagar
+                  </button>
+                )}
               </div>
               <p className="text-xs text-gray-600 mt-1.5">{entry.details}</p>
               <div className="flex flex-wrap justify-between gap-1 mt-2 text-[11px] text-gray-400">
@@ -1050,6 +1113,7 @@ export default function App() {
   const [editLog, setEditLog] = useState<EditLogEntry[]>([]);
   const [editLogError, setEditLogError] = useState<string | null>(null);
   const isAdmin = !!session;
+  const isSuper = session?.role === "super";
 
   // ── Formulário de produto (criar/editar) ──
   const [formTarget, setFormTarget] = useState<{ date: string; product?: Product } | null>(null);
@@ -1247,7 +1311,7 @@ export default function App() {
             {isAdmin ? (
               <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-lg pl-3 pr-1.5 py-1.5">
                 <ThemeToggle dark={dark} onToggle={toggleDark} />
-                <span className="text-xs font-semibold text-emerald-700">🔓 {session!.name}</span>
+                <span className="text-xs font-semibold text-emerald-700">{isSuper ? "⭐" : "🔓"} {session!.name}{isSuper && <span className="ml-1.5 text-[10px] uppercase tracking-wider bg-emerald-100 text-emerald-800 rounded px-1 py-0.5">Super</span>}</span>
                 <button
                   onClick={() => setShowEditLog(true)}
                   className="text-[11px] font-medium text-blue-700 hover:text-blue-900 bg-white border border-blue-200 rounded px-2 py-1 transition-colors"
@@ -1387,7 +1451,7 @@ export default function App() {
 
       {/* ═══ HISTÓRICO ═══ */}
       {showEditLog && (
-        <EditLogModal entries={editLog} error={editLogError} onClose={() => setShowEditLog(false)} />
+        <EditLogModal entries={editLog} error={editLogError} canDelete={isSuper} onClose={() => setShowEditLog(false)} />
       )}
 
       {/* ═══ LOGIN ═══ */}

@@ -12,6 +12,9 @@ export interface Account {
   role: "admin";
 }
 
+/** Papéis possíveis de quem está logado. "super" = admin + apagar histórico. */
+export type Role = "admin" | "super";
+
 // Contas cadastradas. Por enquanto só existe o admin (Jornalismo), que edita
 // o quadro inteiro. Quando souber o nome oficial do setor e quiser trocar a
 // senha, é só editar a linha abaixo.
@@ -23,11 +26,35 @@ export const ACCOUNTS: Account[] = [
   { label: "Admin", password: "admin", role: "admin" },
 ];
 
+// ── Usuário Super Admin ───────────────────────────────────────────────────────
+// Faz tudo que o admin faz e ainda pode APAGAR o histórico de alterações.
+// Entra pelo mesmo "Modo Admin": no campo "Seu nome" vai o usuário abaixo, e no
+// campo "Senha" a senha. A senha NÃO fica escrita aqui, só o "hash" dela
+// (PBKDF2-SHA256), então quem lê o código não descobre a senha.
+// Para trocar o usuário, edite SUPER_USERNAME. Para trocar a senha, gere um hash
+// novo (veja o README) e cole em SUPER_PASSWORD_HASH.
+const SUPER_USERNAME = "vitoria";
+const SUPER_SALT = "quadro-produtos:super:v1";
+const SUPER_ITERATIONS = 210_000;
+const SUPER_PASSWORD_HASH = "b296c709761e44b7301f3da6b40b5085b07ce0d60a6c149eb2475c62fb86fb1c";
+
+async function hashPassword(password: string): Promise<string> {
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey("raw", enc.encode(password), "PBKDF2", false, ["deriveBits"]);
+  const bits = await crypto.subtle.deriveBits(
+    { name: "PBKDF2", hash: "SHA-256", salt: enc.encode(SUPER_SALT), iterations: SUPER_ITERATIONS },
+    key,
+    256,
+  );
+  return Array.from(new Uint8Array(bits)).map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
 const SESSION_KEY = "qp_admin_session";
 
 export interface AdminSession {
   name: string;
   label: string;
+  role: Role;
 }
 
 /** Confere a senha digitada contra as contas cadastradas. */
@@ -36,13 +63,26 @@ export function checkPassword(password: string): Account | null {
   return found ?? null;
 }
 
-/** Tenta logar. `name` é só o nome de quem está usando (exibido na tela), livre. */
-export function login(name: string, password: string): AdminSession | null {
+/**
+ * Tenta logar. Para admins comuns, `name` é só o nome de quem está usando
+ * (exibido na tela), livre. O nome do Super Admin é reservado: só entra com ele
+ * quem souber a senha do Super Admin.
+ */
+export async function login(name: string, password: string): Promise<AdminSession | null> {
   const trimmedName = name.trim();
   if (!trimmedName) return null;
-  const account = checkPassword(password.trim());
-  if (!account) return null;
-  const session: AdminSession = { name: trimmedName, label: account.label };
+
+  let session: AdminSession | null = null;
+  if (trimmedName.toLowerCase() === SUPER_USERNAME) {
+    if ((await hashPassword(password)) === SUPER_PASSWORD_HASH) {
+      session = { name: SUPER_USERNAME, label: "Super Admin", role: "super" };
+    }
+  } else {
+    const account = checkPassword(password.trim());
+    if (account) session = { name: trimmedName, label: account.label, role: "admin" };
+  }
+  if (!session) return null;
+
   try {
     localStorage.setItem(SESSION_KEY, JSON.stringify(session));
   } catch {
@@ -62,7 +102,10 @@ export function logout() {
 export function getSession(): AdminSession | null {
   try {
     const raw = localStorage.getItem(SESSION_KEY);
-    return raw ? JSON.parse(raw) : null;
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    // Sessões antigas não têm "role": tratam-se como admin comum.
+    return { name: parsed.name, label: parsed.label, role: parsed.role === "super" ? "super" : "admin" };
   } catch {
     return null;
   }

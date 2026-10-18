@@ -1,6 +1,7 @@
 import {
   addDoc, collection, doc, getDoc, setDoc, onSnapshot,
   query, where, documentId, orderBy, limit,
+  deleteDoc, getDocs, writeBatch,
 } from "firebase/firestore";
 import { db } from "./firebase";
 import { buildSchedule, type Product, type DaySchedule } from "./data";
@@ -122,6 +123,25 @@ const EDIT_LOG_COLLECTION = "editLogs";
 /** Grava no Firestore para que o histórico seja compartilhado entre dispositivos. */
 export async function recordEditLog(entry: Omit<EditLogEntry, "id">): Promise<void> {
   await addDoc(collection(db, EDIT_LOG_COLLECTION), entry);
+}
+
+/** Apaga um registro do histórico (uso do Super Admin). */
+export async function deleteEditLogEntry(id: string): Promise<void> {
+  await deleteDoc(doc(db, EDIT_LOG_COLLECTION, id));
+}
+
+/** Apaga TODO o histórico, inclusive registros além dos 100 exibidos (uso do Super Admin). */
+export async function clearEditLog(): Promise<number> {
+  let total = 0;
+  for (;;) {
+    const snap = await getDocs(query(collection(db, EDIT_LOG_COLLECTION), limit(400)));
+    if (snap.empty) break;
+    const batch = writeBatch(db);
+    snap.docs.forEach(d => batch.delete(d.ref));
+    await batch.commit();
+    total += snap.size;
+  }
+  return total;
 }
 
 /** Escuta os 100 registros mais recentes do histórico. */
