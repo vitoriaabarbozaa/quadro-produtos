@@ -895,7 +895,6 @@ function ProductFormModal({
     const missing: string[] = [];
     if (!form.name.trim())   missing.push("Nome");
     if (!form.studio.trim()) missing.push("Estúdio / Local");
-    if (kindInfo.type === "jogo" && !form.channel.trim()) missing.push("Canal / Transmissão");
     if (form.team.length === 0) missing.push("Equipe (marque ao menos uma pessoa)");
     if (missing.length > 0) {
       setFormError(`Preencha os campos obrigatórios: ${missing.join(", ")}.`);
@@ -1007,12 +1006,11 @@ function ProductFormModal({
             </div>
             {kindInfo.type === "jogo" && (
               <div className="col-span-2">
-                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-widest mb-1">Canal / Transmissão<span className="text-red-500"> *</span></label>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-widest mb-1">Canal / Transmissão</label>
                 <input
                   value={form.channel}
                   onChange={e => setForm(f => ({ ...f, channel: e.target.value }))}
                   placeholder="Ex: SporTV"
-                  required
                   className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400"
                 />
               </div>
