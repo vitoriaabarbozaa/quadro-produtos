@@ -153,7 +153,7 @@ function ProductModal({
   const tCount = talentCount(product);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/25 backdrop-blur-[2px]" />
       <div
         className="relative z-10 w-full max-w-lg bg-white shadow-2xl rounded-xl overflow-hidden max-h-[88vh] flex flex-col"
@@ -723,7 +723,7 @@ function EditLogModal({ entries, onClose, error, canDelete }: { entries: EditLog
   };
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/30 backdrop-blur-[2px]" />
       <section className="relative z-10 w-full max-w-2xl bg-white shadow-2xl rounded-xl overflow-hidden max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
         <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
@@ -906,7 +906,7 @@ function ProductFormModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/25 backdrop-blur-[2px]" />
       <form
         onSubmit={handleSubmit}
