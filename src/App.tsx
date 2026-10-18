@@ -83,6 +83,22 @@ function talentNames(p: Product): string[] {
     .map(m => m.name);
 }
 
+/** Equipe agrupada por função (apresentação primeiro), pra mostrar todas as funções no cartão semanal. */
+function teamByRole(p: Product): { role: string; label: string; names: string[] }[] {
+  const groups: { role: string; label: string; names: string[] }[] = [];
+  for (const m of p.team) {
+    if (!m.name?.trim()) continue;
+    let g = groups.find(x => x.role === m.role);
+    if (!g) {
+      const isPresenter = ["Apresentador", "Apresentadora"].some(r => m.role.startsWith(r));
+      g = { role: m.role, label: isPresenter ? "Apresentação" : m.role, names: [] };
+      groups.push(g);
+    }
+    g.names.push(m.name);
+  }
+  return groups.sort((a, b) => Number(b.label === "Apresentação") - Number(a.label === "Apresentação"));
+}
+
 function talentCount(p: Product): number {
   return p.team.filter(m =>
     ["Narrador", "Comentarista", "Apresentador", "Apresentadora"].some(r => m.role.startsWith(r))
@@ -463,10 +479,12 @@ function DayColumn({
                     {/* Product name */}
                     <div className="flex items-center gap-1.5 mb-1">
                       <span
-                        className="text-[11px] font-bold px-1.5 py-0.5 rounded-full text-white leading-none"
+                        className={`text-[11px] font-bold px-1.5 py-0.5 text-white ${
+                          product.shortName === "EVENTO" ? "rounded-lg leading-tight break-words" : "rounded-full leading-none"
+                        }`}
                         style={{ background: isCancelled ? "#d1d5db" : color }}
                       >
-                        {product.shortName}
+                        {product.shortName === "EVENTO" && product.name.trim() ? product.name : product.shortName}
                       </span>
                       {isOnAir && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />}
                       {product.status === "alterado" && <span className="text-[9px] text-amber-600">⚠</span>}
@@ -497,19 +515,19 @@ function DayColumn({
                         )}
                       </>
                     ) : (
-                      names.length > 0 && (
-                        <>
+                      teamByRole(product).map(group => (
+                        <div key={group.role}>
                           <div className="flex items-start gap-1 text-[11px] text-gray-400 mt-0.5">
                             <span className="text-gray-300 shrink-0 mt-px">└</span>
-                            <span>Apresentação</span>
+                            <span>{group.label}</span>
                           </div>
-                          {names.map((n, i) => (
+                          {group.names.map((n, i) => (
                             <div key={i} className={`text-[11px] font-medium pl-3 leading-snug ${isCancelled ? "line-through text-gray-300" : "text-gray-700"}`}>
                               {n}
                             </div>
                           ))}
-                        </>
-                      )
+                        </div>
+                      ))
                     )}
 
                     {/* Status badges (non-confirmado only) */}
