@@ -33,7 +33,7 @@ export const ACCOUNTS: Account[] = [
 // (PBKDF2-SHA256), então quem lê o código não descobre a senha.
 // Para trocar o usuário, edite SUPER_USERNAME. Para trocar a senha, gere um hash
 // novo (veja o README) e cole em SUPER_PASSWORD_HASH.
-const SUPER_USERNAME = "vitoria";
+const SUPER_USERNAME = "jjeonasa";
 const SUPER_SALT = "quadro-produtos:super:v1";
 const SUPER_ITERATIONS = 210_000;
 const SUPER_PASSWORD_HASH = "b296c709761e44b7301f3da6b40b5085b07ce0d60a6c149eb2475c62fb86fb1c";
