@@ -36,7 +36,7 @@ export const ACCOUNTS: Account[] = [
 const SUPER_USERNAME = "jjeonasa";
 const SUPER_SALT = "quadro-produtos:super:v1";
 const SUPER_ITERATIONS = 210_000;
-const SUPER_PASSWORD_HASH = "b296c709761e44b7301f3da6b40b5085b07ce0d60a6c149eb2475c62fb86fb1c";
+const SUPER_PASSWORD_HASH = "2b0848ca0cd15faa795f8c314df9b3c9bddca55d2f29bb0878ca4a8f1066171f";
 
 async function hashPassword(password: string): Promise<string> {
   const enc = new TextEncoder();
