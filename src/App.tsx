@@ -312,8 +312,9 @@ function DayView({
 
             {schedule.products.map((product, idx) => {
               const state   = getState(product, schedule.date, todayStr, nowMin);
-              const isOnAir = state === "on-air";
-              const isNext  = product.id === next?.id;
+              const isCancelled = product.status === "cancelado";
+              const isOnAir = state === "on-air" && !isCancelled;
+              const isNext  = product.id === next?.id && !isCancelled;
               const isDone  = state === "done";
               const color   = productColor(product.shortName);
               const names   = talentNames(product);
@@ -332,13 +333,13 @@ function DayView({
                   )}
 
                   <div className="flex gap-4 mb-2">
-                    <div className={`mono text-xs w-[76px] text-right shrink-0 pt-4 leading-relaxed ${isDone ? "text-gray-300" : "text-gray-400"}`}>
+                    <div className={`mono text-xs w-[76px] text-right shrink-0 pt-4 leading-relaxed ${isDone || isCancelled ? "text-gray-300" : "text-gray-400"}`}>
                       <div>{product.startTime}</div>
                       <div className="text-gray-300">{product.endTime}</div>
                     </div>
                     <div className="relative flex items-start pt-[18px] shrink-0">
                       <div className="w-3 h-3 rounded-full border-2 border-white z-10 shadow-sm"
-                        style={{ background: isDone ? "#d1d5db" : color, boxShadow: isOnAir ? `0 0 0 4px ${color}33` : undefined }} />
+                        style={{ background: (isDone || isCancelled) ? "#d1d5db" : color, boxShadow: isOnAir ? `0 0 0 4px ${color}33` : undefined }} />
                     </div>
                     <div className="flex-1 mb-2 min-w-0">
                       <button
@@ -347,10 +348,11 @@ function DayView({
                           ${isOnAir ? "bg-white border-emerald-200 shadow-md"
                           : isNext  ? "bg-white border-sky-200 shadow-sm"
                           : isDone  ? "bg-white border-gray-100 opacity-50"
+                          : isCancelled ? "bg-white border-gray-100 hover:border-gray-200"
                           : "bg-white border-gray-200 shadow-sm hover:shadow-md hover:border-gray-300"}`}
                       >
                         <div className="px-4 py-3 flex gap-3">
-                          <div className="w-0.5 self-stretch rounded-full shrink-0" style={{ background: isDone ? "#e5e7eb" : color }} />
+                          <div className="w-0.5 self-stretch rounded-full shrink-0" style={{ background: (isDone || isCancelled) ? "#e5e7eb" : color }} />
                           <div className="flex-1 min-w-0">
                             {(isOnAir || isNext) && (
                               <div className="flex gap-2 mb-1.5">
@@ -358,13 +360,27 @@ function DayView({
                                 {isNext && <span className="inline-flex items-center gap-1 text-[11px] font-bold text-sky-700 bg-sky-50 rounded-full px-2 py-0.5"><span className="w-1.5 h-1.5 rounded-full bg-sky-400" />🔵 Próximo</span>}
                               </div>
                             )}
-                            <div className={`font-bold text-sm ${isDone ? "text-gray-400" : "text-gray-900"} ${product.status === "cancelado" ? "line-through" : ""}`}>
+                            <div className={`font-bold text-sm ${isCancelled ? "text-gray-400 line-through" : isDone ? "text-gray-400" : "text-gray-900"}`}>
                               {product.name}
                             </div>
-                            <div className="text-xs text-gray-400 mt-0.5">{product.studio}</div>
+                            <div className={`text-xs mt-0.5 ${isCancelled ? "text-gray-300 line-through" : "text-gray-400"}`}>{product.studio}</div>
                             {names.map((n, i) => (
-                              <div key={i} className="text-xs text-gray-600 mt-0.5">{n}</div>
+                              <div key={i} className={`text-xs mt-0.5 ${isCancelled ? "text-gray-300 line-through" : "text-gray-600"}`}>{n}</div>
                             ))}
+                            {isCancelled && (
+                              <div className="mt-1.5">
+                                <span
+                                  className="text-[10px] font-medium px-1.5 py-0.5 rounded border"
+                                  style={{
+                                    background: STATUS_COLORS.cancelado.bg,
+                                    color:      STATUS_COLORS.cancelado.text,
+                                    borderColor: STATUS_COLORS.cancelado.border,
+                                  }}
+                                >
+                                  {STATUS_LABEL.cancelado}
+                                </span>
+                              </div>
+                            )}
                             {product.type === "jogo" && (
                               <div className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-600 bg-indigo-50 border border-indigo-100 rounded-full px-2 py-0.5">
                                 🎙️ {talentCount(product)} talentos
