@@ -12,14 +12,17 @@ export interface ProductKind {
   label: string;
   type: "programa" | "jogo";
   defaultStudio: string;
+  /** Horário padrão ao escolher o produto no formulário (opcional). */
+  defaultStart?: string;
+  defaultEnd?: string;
 }
 
 export const PRODUCT_KINDS: ProductKind[] = [
-  { key: "BDPE",        label: "Bom Dia PE",      type: "programa", defaultStudio: "Estúdio 2" },
-  { key: "NE1",         label: "NE1",             type: "programa", defaultStudio: "Estúdio 2" },
-  { key: "GE",          label: "Globo Esporte PE", type: "programa", defaultStudio: "Estúdio 2" },
-  { key: "BOLETIM",     label: "Boletim",         type: "programa", defaultStudio: "Estúdio 1" },
-  { key: "NE2",         label: "NE2",             type: "programa", defaultStudio: "Estúdio 2" },
+  { key: "BDPE",        label: "Bom Dia PE",      type: "programa", defaultStudio: "Estúdio 1", defaultStart: "06:00", defaultEnd: "08:30" },
+  { key: "NE1",         label: "NE1",             type: "programa", defaultStudio: "Estúdio 1", defaultStart: "11:45", defaultEnd: "13:00" },
+  { key: "GE",          label: "Globo Esporte PE", type: "programa", defaultStudio: "Estúdio 1", defaultStart: "13:00", defaultEnd: "13:30" },
+  { key: "BOLETIM",     label: "Boletim",         type: "programa", defaultStudio: "Estúdio 1", defaultStart: "17:00", defaultEnd: "17:10" },
+  { key: "NE2",         label: "NE2",             type: "programa", defaultStudio: "Estúdio 1", defaultStart: "19:00", defaultEnd: "19:30" },
   { key: "JOGO",        label: "Jogo",            type: "jogo",     defaultStudio: "" },
   { key: "GCO",         label: "GCO",             type: "programa", defaultStudio: "Estúdio 1" },
   { key: "DESCOMPLICA", label: "Descomplica PE",  type: "programa", defaultStudio: "Estúdio 3" },
