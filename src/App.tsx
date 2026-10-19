@@ -806,8 +806,8 @@ function kindDefaults(kind: ProductKindKey): ProductFormState {
   return {
     kind,
     name: info.label,
-    startTime: info.defaultStart ?? "08:00",
-    endTime: info.defaultEnd ?? "09:00",
+    startTime: info.defaultStart ?? "", // sem horário padrão (Jogo, GCO, Descomplica, Evento): em branco pra preencher
+    endTime: info.defaultEnd ?? "",
     studio: info.defaultStudio,
     channel: "",
     status: "previsto",
@@ -852,14 +852,9 @@ function ProductFormModal({
 
   function changeKind(kind: ProductKindKey) {
     const defaults = kindDefaults(kind);
-    const info     = PRODUCT_KINDS.find(k => k.key === kind)!;
-    // Produtos com horário padrão (BDPE, NE1, GE, Boletim, NE2) trocam o horário; os demais mantêm o que foi digitado.
-    setForm(f => ({
-      ...defaults,
-      startTime: info.defaultStart ?? f.startTime,
-      endTime:   info.defaultEnd   ?? f.endTime,
-      name: defaults.name,
-    }));
+    // Produtos com horário padrão (BDPE, NE1, GE, Boletim, NE2) já vêm preenchidos;
+    // os demais (Jogo, GCO, Descomplica, Evento) ficam em branco pra definir na hora.
+    setForm({ ...defaults, name: defaults.name });
   }
 
   function isChecked(role: string, person: string) {
