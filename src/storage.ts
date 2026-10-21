@@ -105,6 +105,37 @@ export async function deleteProduct(date: string, id: string): Promise<void> {
 }
 
 
+/**
+ * Corrige TODOS os sábados e domingos já gravados no Firestore:
+ *   • Sábado: mantém só NE1, GE e NE2 (remove BDPE e BOLETIM)
+ *   • Domingo: remove todos os produtos fixos (BDPE, NE1, GE, BOLETIM, NE2)
+ * Produtos adicionados manualmente pelo admin (id "<data>-c...") nunca são removidos.
+ * Retorna quantos dias foram alterados e quantos produtos removidos.
+ */
+export async function fixWeekendSchedules(): Promise<{ days: number; removed: number }> {
+  const FIXED = ["BDPE", "NE1", "GE", "BOLETIM", "NE2"];
+  const SATURDAY_OK = ["NE1", "GE", "NE2"];
+  const snap = await getDocs(collection(db, COLLECTION));
+  let days = 0;
+  let removed = 0;
+  for (const d of snap.docs) {
+    const weekday = new Date(d.id + "T12:00:00").getDay();
+    if (weekday !== 0 && weekday !== 6) continue;
+    const products = (d.data().products ?? []) as Product[];
+    const kept = products.filter(p => {
+      const isManual = String(p.id).startsWith(`${d.id}-c`);
+      if (isManual || !FIXED.includes(p.shortName)) return true;
+      return weekday === 6 && SATURDAY_OK.includes(p.shortName);
+    });
+    if (kept.length === products.length) continue;
+    await setDoc(d.ref, { products: kept });
+    days += 1;
+    removed += products.length - kept.length;
+  }
+  return { days, removed };
+}
+
+
 // ── Histórico de alterações ───────────────────────────────────────────────────
 export type EditLogAction = "created" | "updated" | "deleted";
 
