@@ -79,7 +79,7 @@ public/
 
 Os dados ficam em duas coleções do Firestore:
 
-- `schedule`: um documento por dia (`AAAA-MM-DD`) com a lista de produtos. Quando o dia ainda não existe, ele é criado a partir do modelo padrão em `src/data.ts` (BDPE, NE1, GE, Boletim e NE2, que acontecem todo dia). Jogo, GCO, Descomplica e Evento são adicionados manualmente pelo admin, só nos dias em que acontecem.
+- `schedule`: um documento por dia (`AAAA-MM-DD`) com a lista de produtos. Quando o dia ainda não existe, ele é criado a partir do modelo padrão em `src/data.ts` e depende do dia da semana: de segunda a sexta entram BDPE, NE1, GE, Boletim e NE2; no sábado, só NE1, GE e NE2; no domingo, nenhum. Jogo, GCO, Descomplica e Evento são adicionados manualmente pelo admin, só nos dias em que acontecem. Mudar o modelo não altera dias que já foram criados no Firestore.
 - `editLogs`: um documento por alteração, usado pelo Histórico.
 
 As regras do Firestore precisam permitir leitura e escrita nessas duas coleções. Se o Histórico mostrar um aviso de bloqueio ou o app avisar que "o histórico não foi registrado", é isso que falta. A configuração do projeto fica em `src/firebase.ts`.
@@ -118,6 +118,27 @@ export const ACCOUNTS: Account[] = [
 O nome digitado no login aparece no Histórico como autor da alteração, e a sessão fica salva no navegador até clicar em "Sair".
 
 > **Atenção:** como é um projeto 100% front-end, essa senha vai dentro do JavaScript que o navegador baixa, então fica visível pra qualquer pessoa que inspecione o site, mesmo com o repositório privado. O mesmo vale pra configuração do Firebase. Não é uma segurança "à prova de bala": serve pra evitar que alguém mexa na programação sem querer, não pra proteger informação sigilosa. Não use uma senha que você usa em outros lugares.
+
+## Super Admin
+
+Além do admin comum, existe um usuário **Super Admin**, que faz tudo o que o admin faz e ainda pode **apagar o histórico de alterações** (um registro por vez, com o botão "Apagar", ou tudo de uma vez, com "Limpar histórico").
+
+Ele entra pelo mesmo botão **Modo Admin**: no campo "Seu nome" vai o usuário (definido em `SUPER_USERNAME`, em `src/auth.ts`) e no campo "Senha" vai a senha dele. O nome desse usuário fica reservado, então um admin comum não consegue entrar com ele.
+
+A senha **não fica escrita no código**: só o hash dela (`SUPER_PASSWORD_HASH`, PBKDF2-SHA256). Pra trocar a senha, gere um hash novo abrindo o site no navegador, apertando `F12`, indo na aba **Console** e colando o código abaixo (troque `MINHA-SENHA-NOVA` pela senha desejada):
+
+```js
+(async () => {
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey("raw", enc.encode("MINHA-SENHA-NOVA"), "PBKDF2", false, ["deriveBits"]);
+  const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", hash: "SHA-256", salt: enc.encode("quadro-produtos:super:v1"), iterations: 210000 }, key, 256);
+  console.log(Array.from(new Uint8Array(bits)).map(b => b.toString(16).padStart(2, "0")).join(""));
+})();
+```
+
+Copie o texto que aparecer e cole no lugar de `SUPER_PASSWORD_HASH` em `src/auth.ts`.
+
+> Apagar o histórico exige que as regras do Firestore permitam `delete` na coleção `editLogs`. Se aparecer o aviso "O Firebase bloqueou a exclusão", é isso que precisa ser liberado.
 
 ## Cadastrando pessoas e funções
 
