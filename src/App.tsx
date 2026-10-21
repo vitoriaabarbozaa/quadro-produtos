@@ -44,11 +44,24 @@ const SHIFTS: { key: Shift; label: string; range: string; start: number; end: nu
   { key: "noite",  label: "Noite",  range: "17h – 23h", start: 17 * 60, end: 23 * 60 },
 ];
 
+// Jogo, GCO, Descomplica e Evento podem ficar sem horário de fim.
+// Nesse caso o produto é tratado como "no ar" por OPEN_END_MINUTES depois do início.
+const OPEN_END_MINUTES = 60;
+
+function endMinutes(p: Product): number {
+  return p.endTime ? toMinutes(p.endTime) : toMinutes(p.startTime) + OPEN_END_MINUTES;
+}
+
+/** "06:00 – 08:30", ou só "21:00" quando não há horário de fim. */
+function timeRange(p: Product, sep = " – "): string {
+  return p.endTime ? `${p.startTime}${sep}${p.endTime}` : p.startTime;
+}
+
 function productInShift(p: Product, shift: Shift): boolean {
   if (shift === "todos") return true;
   const cfg = SHIFTS.find(s => s.key === shift)!;
   const start = toMinutes(p.startTime);
-  const end   = toMinutes(p.endTime);
+  const end   = endMinutes(p);
   // include if the product overlaps with the shift window
   return start < cfg.end && end > cfg.start;
 }
@@ -66,7 +79,7 @@ function productColor(shortName: string) {
 
 function getState(p: Product, dateStr: string, todayStr: string, nowMin: number) {
   if (dateStr !== todayStr) return dateStr < todayStr ? "done" : "future";
-  const s = toMinutes(p.startTime), e = toMinutes(p.endTime);
+  const s = toMinutes(p.startTime), e = endMinutes(p);
   if (nowMin >= s && nowMin < e) return "on-air";
   if (nowMin < s) return "upcoming";
   return "done";
@@ -183,7 +196,7 @@ function ProductModal({
               </div>
               <h2 className="text-xl font-bold text-gray-900">{product.name}</h2>
               <p className="mono text-sm text-gray-400 mt-0.5">
-                {product.startTime} – {product.endTime} · {product.studio}
+                {timeRange(product)} · {product.studio}
               </p>
             </div>
             <button onClick={onClose} className="text-gray-300 hover:text-gray-600 transition-colors p-1 rounded-full hover:bg-gray-100 shrink-0 mt-0.5">
@@ -265,7 +278,7 @@ function DayView({
   const month   = dateObj.toLocaleDateString("pt-BR", { month: "long" });
 
   const onAir = isToday ? schedule.products.find(p =>
-    nowMin >= toMinutes(p.startTime) && nowMin < toMinutes(p.endTime)
+    nowMin >= toMinutes(p.startTime) && nowMin < endMinutes(p)
   ) : undefined;
   const next = isToday ? schedule.products.find(p => toMinutes(p.startTime) > nowMin) : undefined;
 
@@ -320,7 +333,7 @@ function DayView({
               const isDone  = state === "done";
               const color   = productColor(product.shortName);
               const names   = talentNames(product);
-              const prevEnd = idx > 0 ? toMinutes(schedule.products[idx - 1].endTime) : 0;
+              const prevEnd = idx > 0 ? endMinutes(schedule.products[idx - 1]) : 0;
               const showNow = isToday && nowMin >= prevEnd && nowMin < toMinutes(product.startTime);
 
               return (
@@ -337,7 +350,7 @@ function DayView({
                   <div className="flex gap-4 mb-2">
                     <div className={`mono text-xs w-[76px] text-right shrink-0 pt-4 leading-relaxed ${isDone || isCancelled ? "text-gray-300" : "text-gray-400"}`}>
                       <div>{product.startTime}</div>
-                      <div className="text-gray-300">{product.endTime}</div>
+                      {product.endTime && <div className="text-gray-300">{product.endTime}</div>}
                     </div>
                     <div className="relative flex items-start pt-[18px] shrink-0">
                       <div className="w-3 h-3 rounded-full border-2 border-white z-10 shadow-sm"
@@ -398,7 +411,7 @@ function DayView({
             })}
 
             {isToday && schedule.products.length > 0 &&
-              nowMin >= toMinutes(schedule.products[schedule.products.length - 1].endTime) && (
+              nowMin >= endMinutes(schedule.products[schedule.products.length - 1]) && (
               <div className="flex items-center gap-3 py-2">
                 <div className="mono text-xs font-bold text-red-500 w-[76px] text-right shrink-0">{formatTime(now)}</div>
                 <div className="w-2 h-2 rounded-full bg-red-500 shrink-0 -ml-[4.5px]" />
@@ -491,7 +504,7 @@ function DayColumn({
                   <div className="pl-1.5">
                     {/* Time */}
                     <div className="mono text-[10px] text-gray-400 mb-0.5 tabular-nums">
-                      {product.startTime}–{product.endTime}
+                      {timeRange(product, "–")}
                     </div>
 
                     {/* Product name */}
@@ -849,6 +862,9 @@ function ProductFormModal({
 
   const roles     = useMemo(() => getRolesFor(form.kind), [form.kind, peopleVersion]);
   const kindInfo  = PRODUCT_KINDS.find(k => k.key === form.kind)!;
+  // Horário de fim só é obrigatório nos produtos da grade fixa (BDPE, NE1, GE, Boletim e NE2),
+  // que são os que têm horário padrão. Jogo, GCO, Descomplica e Evento podem ficar sem.
+  const endRequired = kindInfo.defaultEnd !== undefined;
 
   function changeKind(kind: ProductKindKey) {
     const defaults = kindDefaults(kind);
@@ -978,13 +994,13 @@ function ProductFormModal({
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-widest mb-1">Fim<span className="text-red-500"> *</span></label>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-widest mb-1">Fim{endRequired && <span className="text-red-500"> *</span>}</label>
               <input
                 type="time"
                 value={form.endTime}
                 onChange={e => setForm(f => ({ ...f, endTime: e.target.value }))}
                 className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400"
-                required
+                required={endRequired}
               />
             </div>
             <div>
@@ -1234,7 +1250,9 @@ export default function App() {
       } else {
         await addProduct(formTarget.date, payload, weekDates);
         action = "created";
-        details = `Produto cadastrado das ${payload.startTime} às ${payload.endTime}.`;
+        details = payload.endTime
+          ? `Produto cadastrado das ${payload.startTime} às ${payload.endTime}.`
+          : `Produto cadastrado às ${payload.startTime}.`;
       }
       try {
         await recordEditLog({
@@ -1262,7 +1280,7 @@ export default function App() {
       try {
         await recordEditLog({
           actor: session?.name || "Admin", action: "deleted", date, productName: product.name,
-          details: `Produto removido da programação (${product.startTime}–${product.endTime}).`,
+          details: `Produto removido da programação (${timeRange(product, "–")}).`,
           createdAt: new Date().toISOString(),
         });
       } catch (logError) {
@@ -1278,7 +1296,7 @@ export default function App() {
 
   const todaySchedule = schedule.find(d => d.date === todayStr);
   const onAirProduct  = todaySchedule?.products.find(p =>
-    nowMin >= toMinutes(p.startTime) && nowMin < toMinutes(p.endTime)
+    nowMin >= toMinutes(p.startTime) && nowMin < endMinutes(p)
   );
   const nextProduct = todaySchedule?.products.find(p => toMinutes(p.startTime) > nowMin);
 
