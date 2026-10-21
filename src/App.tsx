@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useLayoutEffect } from "react";
 import {
-  getWeekDates, PRODUCT_COLORS,
+  getWeekDates, dateKey, PRODUCT_COLORS,
   type Product, type DaySchedule, type Status, type TeamMember,
 } from "./data";
 import { useRecifeTime, formatTime, toMinutes, currentMinutes, countdown } from "./hooks";
@@ -1150,7 +1150,7 @@ function ProductFormModal({
 
 export default function App() {
   const now      = useRecifeTime();
-  const todayStr = now.toISOString().slice(0, 10);
+  const todayStr = dateKey(now);
   const nowMin   = currentMinutes(now);
 
   const [weekOffset, setWeekOffset]   = useState(0);
