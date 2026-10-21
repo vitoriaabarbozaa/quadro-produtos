@@ -11,7 +11,7 @@ import {
 } from "./roster";
 import {
   subscribeToSchedule, addProduct, updateProduct, deleteProduct,
-  recordEditLog, subscribeToEditLog, deleteEditLogEntry, clearEditLog, type EditLogEntry,
+  recordEditLog, subscribeToEditLog, deleteEditLogEntry, clearEditLog, fixWeekendSchedules, type EditLogEntry,
 } from "./storage";
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -1373,6 +1373,23 @@ export default function App() {
                 >
                   Histórico
                 </button>
+                {isSuper && (
+                  <button
+                    onClick={async () => {
+                      if (!window.confirm("Corrigir TODOS os sábados (só NE1, GE e NE2) e domingos (nenhum produto fixo)? Produtos adicionados manualmente são mantidos.")) return;
+                      try {
+                        const r = await fixWeekendSchedules();
+                        window.alert(`Pronto: ${r.days} dia(s) corrigido(s), ${r.removed} produto(s) removido(s).`);
+                      } catch (err) {
+                        console.error(err);
+                        window.alert("Não foi possível corrigir. Verifique as regras do Firestore (permissão de leitura/escrita em schedule).");
+                      }
+                    }}
+                    className="text-[11px] font-medium text-amber-700 hover:text-amber-900 bg-white border border-amber-200 rounded px-2 py-1 transition-colors"
+                  >
+                    Corrigir fins de semana
+                  </button>
+                )}
                 <button
                   onClick={handleLogout}
                   className="text-[11px] font-medium text-emerald-700 hover:text-emerald-900 bg-white border border-emerald-200 rounded px-2 py-1 transition-colors"
