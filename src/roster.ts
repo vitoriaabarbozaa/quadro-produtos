@@ -25,7 +25,7 @@ export const PRODUCT_KINDS: ProductKind[] = [
   { key: "NE2",         label: "NE2",             type: "programa", defaultStudio: "Estúdio 1", defaultStart: "19:00", defaultEnd: "19:30" },
   { key: "JOGO",        label: "Jogo",            type: "jogo",     defaultStudio: "" },
   { key: "GCO",         label: "GCO",             type: "programa", defaultStudio: "Estúdio 1" },
-  { key: "DESCOMPLICA", label: "Descomplica PE",  type: "programa", defaultStudio: "Estúdio 3" },
+  { key: "DESCOMPLICA", label: "Descomplica PE",  type: "programa", defaultStudio: "Estúdio Descomplica" },
   { key: "EVENTO",      label: "Evento",          type: "programa", defaultStudio: "" },
 ];
 
