@@ -38,6 +38,12 @@ function prog(
   return { id: id(), name, shortName, type: "programa", startTime: start, endTime: end, studio, status, team, ...(notes ? { notes } : {}) };
 }
 
+/** Data local no formato AAAA-MM-DD (sem passar por UTC, que muda o dia depois das 21h em Recife). */
+export function dateKey(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
 export function getWeekDates(referenceDate: Date): string[] {
   const d = new Date(referenceDate);
   const day = d.getDay();
@@ -46,15 +52,19 @@ export function getWeekDates(referenceDate: Date): string[] {
   return Array.from({ length: 7 }, (_, i) => {
     const dd = new Date(d);
     dd.setDate(dd.getDate() + i);
-    return dd.toISOString().slice(0, 10);
+    return dateKey(dd);
   });
 }
 
-// Produtos fixos: acontecem todo santo dia, com o mesmo horário padrão.
-// Jogo, GCO, Descomplica e Evento não entram aqui — são adicionados pelo
-// admin manualmente, só nos dias em que realmente acontecem.
-function fixedProducts(): Product[] {
-  return [
+// Produtos fixos, com horário padrão. Jogo, GCO, Descomplica e Evento não entram
+// aqui: são adicionados pelo admin manualmente, só nos dias em que acontecem.
+//   • Segunda a sexta: BDPE, NE1, GE, Boletim e NE2
+//   • Sábado: NE1, GE e NE2
+//   • Domingo: nenhum
+function fixedProducts(date: string): Product[] {
+  const weekday = new Date(date + "T12:00:00").getDay(); // 0 = domingo ... 6 = sábado
+  if (weekday === 0) return [];
+  const all: Product[] = [
     prog("Bom Dia PE", "BDPE", "06:00", "08:30", "Estúdio 1", "confirmado", [
       { role: "Apresentador(a)", name: "Clarissa Góes" },
     ]),
@@ -71,10 +81,12 @@ function fixedProducts(): Product[] {
       { role: "Apresentador(a)", name: "Márcio Bonfim" },
     ]),
   ];
+  if (weekday === 6) return all.filter(p => ["NE1", "GE", "NE2"].includes(p.shortName));
+  return all;
 }
 
 export function buildSchedule(weekDates: string[]): DaySchedule[] {
-  return weekDates.map(date => ({ date, products: fixedProducts() }));
+  return weekDates.map(date => ({ date, products: fixedProducts(date) }));
 }
 
 export const PRODUCT_COLORS: Record<string, string> = {
